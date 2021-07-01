@@ -71,8 +71,9 @@ void NCursesDisplay::DisplayProcesses(std::vector<Process>& processes,
   wattroff(window, COLOR_PAIR(2));
   for (int i = 0; i < n; ++i) {
     // Clear the line
-    mvwprintw(window, ++row, pid_column, (string(window->_maxx-2, ' ').c_str()));
-    
+    mvwprintw(window, ++row, pid_column,
+              (string(window->_maxx - 2, ' ').c_str()));
+
     mvwprintw(window, row, pid_column, to_string(processes[i].Pid()).c_str());
     mvwprintw(window, row, user_column, processes[i].User().c_str());
     float cpu = processes[i].CpuUtilization() * 100;
@@ -106,7 +107,7 @@ void NCursesDisplay::Display(System& system, int n) {
     wrefresh(system_window);
     wrefresh(process_window);
     refresh();
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
   }
   endwin();
 }
