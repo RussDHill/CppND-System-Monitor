@@ -6,14 +6,14 @@
 class Processor {
  public:
   Processor();
-  float Utilization();  // DONE: See src/processor.cpp
+  double Utilization();  // DONE: See src/processor.cpp
 
   // DONE: Declare any necessary private members
  private:
-  std::vector<long> values;
-  long prevIdle;
-  long prevNonIdle;
-  long prevTotal;
+  std::vector<double> values;
+  double prevIdle;
+  double prevNonIdle;
+  double prevTotal;
 };
 
 #endif

@@ -17,8 +17,9 @@ Process::Process(int pid) : pid_(pid), cpu_usage(0.f) {}
 int Process::Pid() { return pid_; }
 
 // DONE: Return this process's CPU utilization
-float Process::CpuUtilization() { 
-
+// CALCULATION FROM:
+// https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16736599#16736599
+float Process::CpuUtilization() {
   float uptime = UpTime();
   float total_time = LinuxParser::ActiveJiffies(pid_);
   float starttime = LinuxParser::UpTime(pid_);
@@ -28,11 +29,19 @@ float Process::CpuUtilization() {
 
   cpu_usage = ((total_time / hertz) / seconds);
 
-  return cpu_usage; 
+  return cpu_usage;
 }
 
 // DONE: Return the command that generated this process
-string Process::Command() { return LinuxParser::Command(pid_); }
+string Process::Command() {
+  const size_t MAX_LEN = 30;
+  string command = LinuxParser::Command(pid_);
+  if (command.length() > MAX_LEN) {
+    command.erase(MAX_LEN);
+    command += "...";
+  }
+  return command;
+}
 
 // DONE: Return this process's memory utilization
 string Process::Ram() { return LinuxParser::Ram(pid_); }
@@ -47,6 +56,6 @@ string Process::User() {
 long int Process::UpTime() { return LinuxParser::UpTime(pid_); }
 
 // DONE: Overload the "less than" comparison operator for Process objects
-bool Process::operator<(Process const& a) const { 
+bool Process::operator<(Process const& a) const {
   return a.cpu_usage < this->cpu_usage;
 }

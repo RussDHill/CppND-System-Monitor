@@ -3,30 +3,30 @@
 using LinuxParser::CPUStates;
 using std::vector;
 
-Processor::Processor() : prevIdle(0), prevNonIdle(0), prevTotal(0) {}
+Processor::Processor() : prevIdle(0.0), prevNonIdle(0.0), prevTotal(0.0) {}
 
 // DONE: Return the aggregate CPU utilization
-// CALCULATION FROM: https://stackoverflow.com/questions/23367857/accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
-float Processor::Utilization() {
+// CALCULATION FROM:
+// https://stackoverflow.com/questions/23367857/accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
+double Processor::Utilization() {
+  vector<double> values = LinuxParser::CpuUtilization();
 
-  vector<long> values = LinuxParser::CpuUtilization();
-  
-  long idle = values[CPUStates::kIdle_] + values[CPUStates::kIOwait_];
+  double idle = values[CPUStates::kIdle_] + values[CPUStates::kIOwait_];
 
-  long nonIdle = values[CPUStates::kUser_] + values[CPUStates::kNice_] +
-                 values[CPUStates::kSystem_] + values[CPUStates::kIRQ_] +
-                 values[CPUStates::kSoftIRQ_] + values[CPUStates::kSteal_];
+  double nonIdle = values[CPUStates::kUser_] + values[CPUStates::kNice_] +
+                   values[CPUStates::kSystem_] + values[CPUStates::kIRQ_] +
+                   values[CPUStates::kSoftIRQ_] + values[CPUStates::kSteal_];
 
-  long total = idle + nonIdle;
+  double total = idle + nonIdle;
 
-  float totald = total - prevTotal;
-  float idled = idle - prevIdle;
+  double totald = total - prevTotal;
+  double idled = idle - prevIdle;
 
-  float utilization = (totald - idled) / totald;
+  double utilization = (totald - idled) / totald;
 
   prevIdle = idle;
   prevNonIdle = nonIdle;
-  prevTotal = totald;
+  prevTotal = total;
 
   return utilization;
 }

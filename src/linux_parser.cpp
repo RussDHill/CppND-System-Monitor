@@ -26,12 +26,14 @@ string LinuxParser::OperatingSystem() {
       while (linestream >> key >> value) {
         if (key == "PRETTY_NAME") {
           std::replace(value.begin(), value.end(), '_', ' ');
+          filestream.close();
           return value;
         }
       }
     }
+    filestream.close();
   }
-  return value;
+  return "Linux";
 }
 
 // DONE: An example of how to read data from the filesystem
@@ -43,6 +45,7 @@ string LinuxParser::Kernel() {
     std::getline(stream, line);
     std::istringstream linestream(line);
     linestream >> os >> version >> kernel;
+    stream.close();
   }
   return kernel;
 }
@@ -71,28 +74,27 @@ vector<int> LinuxParser::Pids() {
 float LinuxParser::MemoryUtilization() {
   string line;
   string key;
-  int value, total, free, avail;
+  float value, total, free;
   bool read = true;
   std::ifstream filestream(kProcDirectory + kMeminfoFilename);
   if (filestream.is_open()) {
     while (std::getline(filestream, line) && read) {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
-        if (key == "MemTotal:") {
+        if (key == filterMemTotalString) {
           total = value;
-        } else if (key == "MemFree:") {
+        } else if (key == filterMemFreeString) {
           free = value;
-        } else if (key == "MemAvailable:") {
-          avail = value;
         } else {
           read = false;
+          filestream.close();
           break;
         }
       }
     }
   }
-  int used = total + free - avail;
-  return (float)used / (float)total;
+  float used = total - free;
+  return used / total;
 }
 
 // DONE: Read and return the system uptime
@@ -104,8 +106,9 @@ long LinuxParser::UpTime() {
     std::getline(stream, line);
     std::istringstream linestream(line);
     linestream >> uptime >> idle;
+    stream.close();
   }
-  return (long)uptime;
+  return static_cast<long>(uptime);
 }
 
 // DONE: Read and return the number of jiffies for the system
@@ -128,6 +131,7 @@ long LinuxParser::ActiveJiffies(int pid) {
       if (count == 13) break;
     }
     linestream >> jiffies[0] >> jiffies[1] >> jiffies[2] >> jiffies[3];
+    stream.close();
   }
   return jiffies[0] + jiffies[1] + jiffies[2] + jiffies[3];
 }
@@ -147,15 +151,17 @@ long LinuxParser::ActiveJiffies() {
              jiffies[CPUStates::kIRQ_] >> jiffies[CPUStates::kSoftIRQ_] >>
              jiffies[CPUStates::kSteal_] >> jiffies[CPUStates::kGuest_] >>
              jiffies[CPUStates::kGuestNice_]) {
-        if (key == "cpu") {
+        if (key == filterCpu) {
           long totalActiveJiffies = 0;
           for (auto& jiffy : jiffies) {
             totalActiveJiffies += jiffy;
           }
+          filestream.close();
           return totalActiveJiffies;
         }
       }
     }
+    filestream.close();
   }
   return 0;
 }
@@ -176,19 +182,21 @@ long LinuxParser::IdleJiffies() {
              jiffies[CPUStates::kSteal_] >> jiffies[CPUStates::kGuest_] >>
              jiffies[CPUStates::kGuestNice_]) {
         if (key == "cpu") {
+          filestream.close();
           return jiffies[CPUStates::kIdle_] + jiffies[CPUStates::kIOwait_];
         }
       }
     }
+    filestream.close();
   }
   return 0;
 }
 
 // DONE: Read and return CPU utilization
-vector<long> LinuxParser::CpuUtilization() {
+vector<double> LinuxParser::CpuUtilization() {
   string line;
   string key;
-  vector<long> values(10, 0);
+  vector<double> values(10, 0.0);
   std::ifstream filestream(kProcDirectory + kStatFilename);
   if (filestream.is_open()) {
     while (std::getline(filestream, line)) {
@@ -200,10 +208,12 @@ vector<long> LinuxParser::CpuUtilization() {
              values[CPUStates::kSteal_] >> values[CPUStates::kGuest_] >>
              values[CPUStates::kGuestNice_]) {
         if (key == "cpu") {
+          filestream.close();
           return values;
         }
       }
     }
+    filestream.close();
   }
   return {};
 }
@@ -218,11 +228,13 @@ int LinuxParser::TotalProcesses() {
     while (std::getline(filestream, line)) {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
-        if (key == "processes") {
+        if (key == filterProcesses) {
+          filestream.close();
           return value;
         }
       }
     }
+    filestream.close();
   }
   return 0;
 }
@@ -237,11 +249,13 @@ int LinuxParser::RunningProcesses() {
     while (std::getline(filestream, line)) {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
-        if (key == "procs_running") {
+        if (key == filterRunningProcesses) {
+          filestream.close();
           return value;
         }
       }
     }
+    filestream.close();
   }
   return 0;
 }
@@ -256,6 +270,7 @@ string LinuxParser::Command(int pid) {
     std::getline(stream, line);
     std::istringstream linestream(line);
     linestream >> cmdline;
+    stream.close();
   }
   return cmdline;
 }
@@ -271,13 +286,17 @@ string LinuxParser::Ram(int pid) {
     while (std::getline(filestream, line)) {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
-        if (key == "VmSize:") {
+        // I've used VmData to gives the exact physical memory being used as a
+        // part of Physical RAM
+        if (key == filterProcMem) {  // filterProcMem("VmData:")
           int ram = value / 1000;
           string strRam = to_string(ram);
+          filestream.close();
           return strRam;
         }
       }
     }
+    filestream.close();
   }
   return string();
 }
@@ -292,11 +311,13 @@ string LinuxParser::Uid(int pid) {
     while (std::getline(filestream, line)) {
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
-        if (key == "Uid:") {
+        if (key == filterUID) {
+          filestream.close();
           return value;
         }
       }
     }
+    filestream.close();
   }
   return string();
 }
@@ -312,10 +333,12 @@ string LinuxParser::User(string uid) {
       std::istringstream linestream(line);
       while (linestream >> name >> hash >> value) {
         if (value == uid) {
+          filestream.close();
           return name;
         }
       }
     }
+    filestream.close();
   }
   return string();
 }
@@ -333,8 +356,13 @@ long LinuxParser::UpTime(int pid) {
     int count = 0;
     while (linestream >> value) {
       count++;
-      if (count == 22) return stol(value);
+      if (count == 22) {
+        stream.close();
+        int upTimePid = UpTime() - stol(value) / sysconf(_SC_CLK_TCK);
+        return upTimePid;
+      }
     }
+    stream.close();
   }
   return 0;
 }
